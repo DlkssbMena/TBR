@@ -8,38 +8,46 @@ namespace TBR
 {
     public class FareCalculator
     {
-        public static double CalculateFare(double drivenDistance, List<PricingBand> bands)
+        private readonly List<PricingBand> _bands;
+
+        public FareCalculator(List<PricingBand> bands)
+        {
+            _bands = bands ?? throw new ArgumentNullException(nameof(bands));
+        }
+
+        public double CalculateFare(double drivenDistance)
         {
             double total = 0.0;
             double remaining = drivenDistance;
 
-            foreach (var band in bands)
+            foreach (var band in _bands)
             {
                 if (remaining <= 0) break;
 
-                if (band.Type == PricingBandType.Fixed)
-                {
-                    // Fixed price bands apply if any distance in the band is covered
-                    if (remaining > band.Start)
-                    {
-                        total += band.Rate;
-                        double consumed = band.End - band.Start;
-                        remaining = Math.Max(remaining - consumed, 0);
-                    }
-                }
-                else // PerMile
-                {
-                    double bandMiles = band.End - band.Start;
-                    double applicable = double.IsPositiveInfinity(band.End)
-                        ? remaining
-                        : Math.Min(remaining, bandMiles);
+                double bandMiles = band.End - band.Start;
+                double applicableMiles = (band.End == double.PositiveInfinity)
+                    ? remaining
+                    : Math.Min(remaining, bandMiles);
 
-                    total += applicable * band.Rate;
-                    remaining -= applicable;
+                switch (band.Type)
+                {
+                    case PricingBandType.Fixed:
+                        if (remaining > band.Start)
+                        {
+                            total += band.Rate;
+                            remaining -= Math.Max(bandMiles, 0);
+                        }
+                        break;
+
+                    case PricingBandType.PerMile:
+                        total += applicableMiles * band.Rate;
+                        remaining -= applicableMiles;
+                        break;
                 }
             }
 
             return total;
         }
+
     }
 }
